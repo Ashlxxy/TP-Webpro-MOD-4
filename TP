@@ -1,0 +1,266 @@
+🎯 TARGET FITUR (Sesuai Gambar & Modul)
+Role
+
+Admin
+
+Create buku
+
+Read buku
+
+Update buku
+
+Delete buku
+
+Normal User
+
+Read buku saja
+
+Fitur
+
+✅ Login
+✅ Register (pilih role)
+✅ Middleware role admin
+✅ CRUD Buku
+✅ Tampilan berbeda Admin & User
+✅ Logout
+✅ Rating 1–5
+✅ Release Date
+
+🧩 TEKNOLOGI
+
+PHP 8.x
+
+Laravel 10
+
+Bootstrap 5
+
+MySQL
+
+1️⃣ MEMBUAT PROJECT LARAVEL
+composer create-project laravel/laravel perpus-cots
+cd perpus-cots
+
+
+Jalankan server:
+
+php artisan serve
+
+2️⃣ KONFIGURASI DATABASE
+
+Edit .env
+
+DB_DATABASE=perpus_cots
+DB_USERNAME=root
+DB_PASSWORD=
+
+
+Buat database:
+
+CREATE DATABASE perpus_cots;
+
+3️⃣ AUTHENTICATION (LOGIN & REGISTER)
+
+Gunakan Laravel Breeze (paling mudah & sesuai modul).
+
+composer require laravel/breeze --dev
+php artisan breeze:install
+npm install
+npm run build
+php artisan migrate
+
+4️⃣ TAMBAH ROLE PADA USER
+Migration User
+
+Edit file migration users
+
+$table->string('role')->default('user');
+
+
+Lalu migrate ulang:
+
+php artisan migrate:fresh
+
+5️⃣ MODEL & MIGRATION BUKU
+php artisan make:model Book -m
+
+
+Edit migration books:
+
+Schema::create('books', function (Blueprint $table) {
+    $table->id();
+    $table->string('title');
+    $table->text('description');
+    $table->date('release_date');
+    $table->integer('rating'); // 1–5
+    $table->timestamps();
+});
+
+php artisan migrate
+
+6️⃣ MODEL BOOK
+
+app/Models/Book.php
+
+class Book extends Model
+{
+    protected $fillable = [
+        'title',
+        'description',
+        'release_date',
+        'rating'
+    ];
+}
+
+7️⃣ CONTROLLER AUTH (LOGIN, REGISTER, LOGOUT)
+
+Laravel Breeze sudah menyediakan:
+
+LoginController
+
+RegisteredUserController
+
+👉 Tambahkan role di register
+
+Edit RegisteredUserController:
+
+User::create([
+    'name' => $request->name,
+    'email' => $request->email,
+    'password' => Hash::make($request->password),
+    'role' => $request->role
+]);
+
+8️⃣ VIEW REGISTER (PILIH ROLE)
+
+resources/views/auth/register.blade.php
+
+<div class="mb-3">
+    <label>Role</label>
+    <select name="role" class="form-control">
+        <option value="user">Normal User</option>
+        <option value="admin">Admin</option>
+    </select>
+</div>
+
+
+✅ Sesuai gambar Register
+
+9️⃣ CONTROLLER BUKU (CRUD)
+php artisan make:controller BookController
+
+
+app/Http/Controllers/BookController.php
+
+class BookController extends Controller
+{
+    public function index()
+    {
+        $books = Book::all();
+        return view('home', compact('books'));
+    }
+
+    public function store(Request $request)
+    {
+        Book::create($request->all());
+        return back()->with('success', 'Book created successfully');
+    }
+
+    public function update(Request $request, $id)
+    {
+        Book::find($id)->update($request->all());
+        return back()->with('success', 'Book updated successfully');
+    }
+
+    public function destroy($id)
+    {
+        Book::find($id)->delete();
+        return back()->with('success', 'Book deleted successfully');
+    }
+}
+
+🔐 10️⃣ MIDDLEWARE ROLE ADMIN
+php artisan make:middleware AdminMiddleware
+
+
+app/Http/Middleware/AdminMiddleware.php
+
+public function handle($request, Closure $next)
+{
+    if (auth()->user()->role !== 'admin') {
+        abort(403);
+    }
+    return $next($request);
+}
+
+Register Middleware
+
+bootstrap/app.php
+
+'admin' => \App\Http\Middleware\AdminMiddleware::class,
+
+🛣️ 11️⃣ ROUTES
+
+routes/web.php
+
+Route::get('/', [BookController::class, 'index'])->middleware('auth');
+
+Route::post('/books', [BookController::class, 'store'])
+    ->middleware(['auth','admin']);
+
+Route::put('/books/{id}', [BookController::class, 'update'])
+    ->middleware(['auth','admin']);
+
+Route::delete('/books/{id}', [BookController::class, 'destroy'])
+    ->middleware(['auth','admin']);
+
+🖥️ 12️⃣ VIEW HOME (ADMIN & USER)
+
+resources/views/home.blade.php
+
+<h2>Perpustakaan Tertutup</h2>
+
+@if(auth()->user()->role == 'admin')
+<form method="POST" action="/books">
+    @csrf
+    <input name="title" placeholder="Title">
+    <input name="description" placeholder="Description">
+    <input type="date" name="release_date">
+    <input type="number" name="rating" min="1" max="5">
+    <button>Add Book</button>
+</form>
+@endif
+
+<table>
+@foreach($books as $book)
+<tr>
+<td>{{ $book->title }}</td>
+<td>{{ $book->description }}</td>
+<td>{{ $book->release_date }}</td>
+<td>{{ $book->rating }}</td>
+
+@if(auth()->user()->role == 'admin')
+<td>
+<form method="POST" action="/books/{{ $book->id }}">
+@csrf
+@method('DELETE')
+<button>Delete</button>
+</form>
+</td>
+@endif
+
+</tr>
+@endforeach
+</table>
+
+
+✅ Admin bisa CRUD
+✅ User hanya Read
+
+🚪 13️⃣ LOGOUT
+
+Sudah otomatis dari Breeze:
+
+<form method="POST" action="{{ route('logout') }}">
+@csrf
+<button>Logout</button>
+</form>
